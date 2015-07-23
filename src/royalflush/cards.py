@@ -2,8 +2,11 @@
 
 from __future__ import print_function
 from royalflush.glossary import glossary
+from royalflush.bitmath import create_bitmap
 import itertools
 import random
+import hashlib
+
 
 class InvalidCardError(Exception):
 	pass
@@ -62,14 +65,32 @@ class Card():
 	def __hash__(self):
 		"""hash method, set operation support
 		"""
-		return self._suit * 14 + self._rank
+		return self._rank * 4 + self._suit
 	
 	def __eq__(self, other):
 		try:
-			return (self._suit == other._suit) and (self._rank == other._rank)
+			return hash(self) == hash(other)
 		except:
 			raise Exception("Cannot compare %s with %s." % (repr(self), repr(other)))
-		
+	
+	def __lt__(self, other):
+		return hash(self) < hash(other)
+
+	def __le__(self, other):
+		return hash(self) <= hash(other)
+	
+	def __gt__(self, other):
+		return hash(self) > hash(other)
+	
+	def __ge__(self, other):
+		return hash(self) >= hash(other)
+
+_CARD_CODES = dict()
+for rank in range(2, 14+1):
+	for suit in range(1, 4+1):
+		c = Card(suit=suit, rank=rank)
+		_CARD_CODES[hash(c)] = c
+
 class Hands(object):
 	_max_cards = 52
 	def __init__(self, cards=list()):
@@ -130,6 +151,9 @@ class Hands(object):
 	def shuffle(self):
 		random.shuffle(self.cards)
 	
+	def sort(self):
+		self.cards.sort()
+	
 	def add_card(self, card):
 		"""add one card
 		"""
@@ -149,7 +173,7 @@ class Hands(object):
 		
 		for card in hands:
 			self.add_card(card)
-
+	
 	def pick_best_pokerhand(self):
 		"""
 		"""
@@ -171,6 +195,27 @@ class Hands(object):
 				pokerhand = p
 		return pokerhand
 	
+	def __hash__(self):
+		return hash("-".join([str(hash(card)) for card in self.cards]) )
+	
+	def sign(self):
+		return "-".join([str(hash(card)) for card in self.cards])
+	
+	def hash(self):
+		return hash("-".join([str(hash(card)) for card in self.cards]) )
+	
+	def md5(self):
+		m = hashlib.md5()
+		for card in self.cards:
+			m.update(bytes(hash(card)))
+		return m.hexdigest()
+	
+	def bitmap(self):
+		value = 0
+		for card in self.cards:
+			value += 1 << (hash(card) - 1)
+		return value
+
 class Deck(Hands):
 	_max_cards = 1 << 10
 	def __init__(self, n=1, shuffle=True):
@@ -199,6 +244,7 @@ class Deck(Hands):
 		for _ in range(n):
 			cards.append(self.deal_card())
 		return Hands(cards=cards)
+	
 
 class PokerHand():
 	_weight1 = 14 ** 5 # a poker hand has 10 possible patterns, which gives highest weight
@@ -233,6 +279,7 @@ class PokerHand():
 		"""
 		return "".join(["[%s]" % card.icon() for card in self.cards])
 	
+
 	def hist(self, array):
 		"""frequency analysis function
 		"""
@@ -470,27 +517,60 @@ class PokerHand():
 			except:
 				pokerhand = p
 		return pokerhand
+
 	
-
-# p = PokerHand(Hands.random())
-# p = PokerHand(Hands([
-# 		Card(suit=1, rank=1), 
-# 		Card(suit=1, rank=2), 
-# 		Card(suit=1, rank=3), 
-# 		Card(suit=1, rank=4), 
-# 		Card(suit=1, rank=5),
-# 		]))
-
-# p1 = PokerHand(Hands.random())
-# print(p1)
-# p2 = PokerHand(Hands.random())
-
-
-
+	
 if __name__ == "__main__":
 	import unittest
 	import time
-	
+
+# 	h = Hands.random(5)
+# 	print(h.icon())
+# 	p = PokerHand(h)
+# 	print(p)
+
+	p = PokerHand.random(7)
+	print(p)
+
+	def hash_speed_test():
+		h = Hands.random(5)
+
+		st = time.clock()
+		for _ in range(1000):
+			h.sign()
+		print("sign method elaspe: ", time.clock() - st)
+		
+		st = time.clock()
+		for _ in range(1000):
+			h.hash()
+		print("sign method elaspe: ", time.clock() - st)
+
+		st = time.clock()
+		for _ in range(1000):
+			h.bitmap()
+		print("bitmap method elaspe: ", time.clock() - st)
+
+# 	hash_speed_test()
+
+	def hash_performance_test():
+		deck = Deck()
+		
+		s = set()
+		st = time.clock()
+		for cards in itertools.combinations(deck, 5):
+			s.add( Hands(list(cards)).sign() )
+		print(time.clock() - st)
+		print(len(s)) # 2598960
+		
+		s = set()
+		st = time.clock()
+		for cards in itertools.combinations(deck, 5):
+			s.add( Hands(list(cards)).hash() )
+		print(time.clock() - st)
+		print(len(s)) # 2598960
+		
+# 	hash_performance_test()
+
 	def comparison_test():
 		p1 = PokerHand.random(10)
 		p2 = PokerHand.random(10)
@@ -501,7 +581,7 @@ if __name__ == "__main__":
 		else:
 			print("%s - [%s] draw %s - [%s]" % (p1.icon(), p1.pattern, p2.icon(), p2.pattern))
 		
-	comparison_test()
+# 	comparison_test()
 	
 # 	st = time.clock()
 # 	p = PokerHand.random(n=7)
@@ -682,11 +762,16 @@ if __name__ == "__main__":
 				c = Card(suit=1, rank=0)
 		
 		def test_hash(self):
-			self.assertEqual(hash(Card(suit=1, rank=1)), 28)
+			self.assertEqual(hash(Card(suit=1, rank=1)), 14*4+1)
+			self.assertEqual(hash(Card(suit=1, rank=14)), 14*4+1)
 		
 		def test_operator(self):
 			self.assertTrue(Card(suit=1, rank=1) == Card(suit=1, rank=1))
 			self.assertFalse(Card(suit=1, rank=1) == Card(suit=1, rank=13))
+			
+			self.assertGreater(Card(suit=1, rank=6), Card(suit=1, rank=5))
+			self.assertGreater(Card(suit=4, rank=10), Card(suit=1, rank=10))
+			self.assertGreater(Card(suit=1, rank=1), Card(suit=4, rank=13))
 			
 	class HandsUnittest(unittest.TestCase):
 		def test_initialize(self):
@@ -707,7 +792,16 @@ if __name__ == "__main__":
 			h.shuffle()
 			string_after = str(h)
 			self.assertNotEqual(string_before, string_after)
-			
+		
+		def test_sort(self):
+			h = Hands.random(n=7, non_repeat=True)
+			h.sort()
+
+		def test_list(self):
+			h = Hands.random(n=5, non_repeat=True)
+			print(list(h))
+			print(set(h))
+
 		def test_pick_best_pokerhand(self):
 			h = Hands(cards=[
 					Card(suit=1, rank=1),
@@ -737,5 +831,5 @@ if __name__ == "__main__":
 			h.add_hands(d.deal_hands(3))
 			self.assertEqual(h[3], Card(suit=1, rank=4))
 			
-	unittest.main()
+# 	unittest.main()
 	

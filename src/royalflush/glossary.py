@@ -10,10 +10,10 @@ class Glossary():
 			}
 
 		self.card_suit_icon_alias = {
-			1: "♠",
-			2: "♥",
-			3: "♣",
-			4: "♦",
+			1: "♦",
+			2: "♣",
+			3: "♥",
+			4: "♠",
 			}
 
 		self.card_rank_alias = {
