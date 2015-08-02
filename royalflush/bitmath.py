@@ -1,24 +1,21 @@
-##encoding=utf-8
-
-"""
-
-"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 def last_bit(x):
-    """求最后一位
-    解: 跟1求位与
+    """求最后一位是0还是1
+    解: 跟1求 位与
     """
     return x & 1
 
 def last_k_bit(x, k):
-    """求倒数第k位
+    """求倒数第k位是0还是1
     解: 跟100...0 (k-1个0) 求位与, 看是不是等于0
     """
     return (x & 1 << (k - 1)) == 0
 
 def is_two_power(x):
     """检查是否是2的整数幂
-    解: 跟 -1 的值求位与, 如果为0说明是
+    解: 跟 -1 的值求 位与, 如果为0说明是
     """
     return (x & (x - 1)) == 0
 
@@ -44,7 +41,10 @@ def howmany_different(x, y):
     return ans
 
 def create_bitmap(array):
-    """根据array, 生成一个bitmap
+    """生成集合的bitmap
+    Example:
+        Array = [1, 3, 5]
+        Bitmap = 10101
     """
     x = 0
     for i in array:
@@ -52,7 +52,10 @@ def create_bitmap(array):
     return x
 
 def parse_bitmap(x):
-    """根据bitmap, 解析出array
+    """根据bitmap, 解析出集合
+    Example:
+        Bitmap = 10101
+        Array = [1, 3, 5]
     """
     array = list()
     counter = 1
@@ -64,23 +67,22 @@ def parse_bitmap(x):
     return array
 
 def union_bitmap(x, y):
-    """求交集
+    """求x, y的交集, x, y是集合各自的bitmap
     """
     return x | y
 
 def intersect_bitmap(x, y):
-    """求并集
+    """求并集, x, y是集合各自的bitmap
     """
     return x & y
 
 def difference_bitmap(x, y):
-    """从x中丢弃所有y中的元素
+    """从x中丢弃所有y中的元素, x, y是集合各自的bitmap
     """
     return x & (~ y)
 
 
 if __name__ == "__main__":
-    import unittest
     from angora.GADGET import Timer
     import random
     

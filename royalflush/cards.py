@@ -1,8 +1,16 @@
-##encoding=utf-8
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+本模组是扑克牌的抽象类
+
+import命令:
+
+from royalflush.cards import Card, Hands, Deck, PokerHand, _CARD_CODES
+"""
 
 from __future__ import print_function
 from royalflush.glossary import glossary
-from royalflush.bitmath import create_bitmap
 import itertools
 import random
 import hashlib
@@ -21,11 +29,21 @@ class InvalidPokerHandError(Exception):
 	pass
 
 class Card():
+	"""单张扑克牌
+	
+	扑克牌的基本属性是: 花色(suit)和牌面(rank)。
+	
+	- suit, 花色, 1.黑桃, 2.红桃, 3.梅花, 4.方片
+	- rank, 数字, 1, 2, 3, ..., 14, 其中1和14都是A
+	"""
+	
 	def __init__(self, suit, rank):
+		"""初始化
+		"""
 		# check input
 		if not (isinstance(suit, int) and isinstance(rank, int)):
 			raise InvalidCardError("suit and rank has to be integer.")
-		if rank == 1:
+		if rank == 1: # if = 1, make it 14 by default notation for "A"
 			rank += 13
 		if not (1 <= suit <= 4):
 			raise InvalidCardError(
@@ -45,15 +63,21 @@ class Card():
 	def rank(self):
 		return self._rank
 		
-	def __str__(self):		
+	def __str__(self):
+		"""返回牌的文字表达
+		"""		
 		return "%s of %s" % (glossary.card_rank_alias[self._rank],
 							 glossary.card_suit_alias[self._suit],)
 	
 	def icon(self):
+		"""返回牌的图案表达
+		"""
 		return "%s %s" % (glossary.card_suit_icon_alias[self._suit],
 						  glossary.card_rank_icon_alias[self._rank],)
 	
 	def __repr__(self):
+		"""返回牌的代码表达
+		"""
 		return "Card(suit=%s, rank=%s)" % (self._suit, self._rank)
 
 	@staticmethod
@@ -64,6 +88,7 @@ class Card():
 	
 	def __hash__(self):
 		"""hash method, set operation support
+		hash值越大, 牌面大小也越大
 		"""
 		return self._rank * 4 + self._suit
 	
@@ -85,14 +110,11 @@ class Card():
 	def __ge__(self, other):
 		return hash(self) >= hash(other)
 
-_CARD_CODES = dict()
-for rank in range(2, 14+1):
-	for suit in range(1, 4+1):
-		c = Card(suit=suit, rank=rank)
-		_CARD_CODES[hash(c)] = c
 
 class Hands(object):
-	_max_cards = 52
+	"""手牌, 多张扑克牌组成的集合
+	"""
+	_max_cards = 52 # 手牌的最大张数
 	def __init__(self, cards=list()):
 		# check input
 		if not isinstance(cards, list):
@@ -124,6 +146,8 @@ class Hands(object):
 	
 	@staticmethod
 	def random(n=5, non_repeat=True):
+		"""随机生成有n张牌的手牌, 可以用non_repeat指令强制手牌不重复
+		"""
 		if n > Hands._max_cards:
 			raise InvalidHandError("A hands cannot have more than %s cards." % Hands._max_cards)
 		
@@ -175,7 +199,7 @@ class Hands(object):
 			self.add_card(card)
 	
 	def pick_best_pokerhand(self):
-		"""
+		"""选择手牌中选择五张牌组成poker hand, 能组成的最大的牌组。
 		"""
 		cards_in_hand = set(self.cards)
 		if len(cards_in_hand) < 5:
@@ -199,24 +223,34 @@ class Hands(object):
 		return hash("-".join([str(hash(card)) for card in self.cards]) )
 	
 	def sign(self):
+		"""字符串哈希特征
+		"""
 		return "-".join([str(hash(card)) for card in self.cards])
 	
 	def hash(self):
+		"""数字哈希特征
+		"""
 		return hash("-".join([str(hash(card)) for card in self.cards]) )
 	
 	def md5(self):
+		"""md5特征
+		"""
 		m = hashlib.md5()
 		for card in self.cards:
 			m.update(bytes(hash(card)))
 		return m.hexdigest()
 	
 	def bitmap(self):
+		"""bitmap特征
+		"""
 		value = 0
 		for card in self.cards:
 			value += 1 << (hash(card) - 1)
 		return value
 
 class Deck(Hands):
+	"""一整幅牌
+	"""
 	_max_cards = 1 << 10
 	def __init__(self, n=1, shuffle=True):
 		"""initiate a deck of cards. you can name how many deck you want to use
@@ -231,12 +265,16 @@ class Deck(Hands):
 			self.shuffle()
 
 	def deal_card(self):
+		"""从牌顶发1张牌。
+		"""
 		try:
 			return self.cards.pop()
 		except:
 			raise EmptyDeckError("Cannot deal card from an empty deck.")
 		
 	def deal_hands(self, n):
+		"""从牌顶发n张牌。
+		"""
 		if len(self.cards) < n:
 			raise EmptyDeckError("Not enough cards for dealing %s cards" % n)
 		
@@ -247,6 +285,8 @@ class Deck(Hands):
 	
 
 class PokerHand():
+	"""五张不同的牌组成德州扑克中的poker hand
+	"""
 	_weight1 = 14 ** 5 # a poker hand has 10 possible patterns, which gives highest weight
 	_weight2 = 14 ** 4 # there are 5 cards at most in calculating the score
 	_weight3 = 14 ** 3
@@ -418,7 +458,7 @@ class PokerHand():
 						self.score += rank * self._weight3
 				
 			else:
-				raise Exception("god")
+				raise Exception("Failed to detect pattern")
 				
 		elif len(histgram) == 3: # 3 of a Kind or 2 pair
 			values = set(histgram.values())
@@ -453,7 +493,7 @@ class PokerHand():
 				self.score += minion[0] * self._weight2
 				self.score += minion[1] * self._weight3
 			else:
-				raise Exception("god")
+				raise Exception("Failed to detect pattern")
 			
 		elif len(histgram) == 4: # <1 PAIR> DETECTED!
 			self.strength = 2
@@ -518,19 +558,15 @@ class PokerHand():
 				pokerhand = p
 		return pokerhand
 
-	
+_CARD_CODES = dict() # {hash(card): Card(suit, rank) instance}
+for rank in range(2, 14+1):
+	for suit in range(1, 4+1):
+		c = Card(suit=suit, rank=rank)
+		_CARD_CODES[hash(c)] = c
 	
 if __name__ == "__main__":
 	import unittest
 	import time
-
-# 	h = Hands.random(5)
-# 	print(h.icon())
-# 	p = PokerHand(h)
-# 	print(p)
-
-	p = PokerHand.random(7)
-	print(p)
 
 	def hash_speed_test():
 		h = Hands.random(5)
@@ -543,7 +579,7 @@ if __name__ == "__main__":
 		st = time.clock()
 		for _ in range(1000):
 			h.hash()
-		print("sign method elaspe: ", time.clock() - st)
+		print("hash method elaspe: ", time.clock() - st)
 
 		st = time.clock()
 		for _ in range(1000):
@@ -583,15 +619,12 @@ if __name__ == "__main__":
 		
 # 	comparison_test()
 	
-# 	st = time.clock()
-# 	p = PokerHand.random(n=7)
-# 	print(p.icon(), p.pattern)
-# 	print(time.clock() - st)
 	
 	def poker():
 		h = Hands.random(7)
 		print(h.icon())
 		print(h.pick_best_pokerhand())
+		
 # 	poker()
 
 	class PokerHandUnittest(unittest.TestCase):
